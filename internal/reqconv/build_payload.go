@@ -27,7 +27,7 @@ func BuildPayload(req *anthropic.Request, options BuildOptions) (*kiroproto.Payl
 	nameMap := NewToolNameMap()
 
 	// 1. Build system prompt and convert tools.
-	systemPrompt, toolEntries := buildSystemAndTools(req, options.ToolSearchCtx, nameMap)
+	systemPrompt, toolEntries, systemHasCache := buildSystemAndTools(req, options.ToolSearchCtx, nameMap)
 
 	// 2. Normalize and split messages.
 	hasTools := len(req.Tools) > 0
@@ -39,7 +39,7 @@ func BuildPayload(req *anthropic.Request, options BuildOptions) (*kiroproto.Payl
 
 	// 3. Build history and place system prompt.
 	history := buildHistory(historyMsgs, nameMap)
-	history, lastContent := placeSystemPrompt(systemPrompt, history, ExtractTextContent(lastMsg.Content))
+	history, lastContent := placeSystemPrompt(systemPrompt, systemHasCache, history, ExtractTextContent(lastMsg.Content))
 
 	// 4. Build currentMessage.
 	// Extract tool_use IDs from the preceding assistant message for reordering tool results.
@@ -66,8 +66,9 @@ func BuildPayload(req *anthropic.Request, options BuildOptions) (*kiroproto.Payl
 }
 
 // buildSystemAndTools extracts the system prompt and converts tools.
-func buildSystemAndTools(req *anthropic.Request, tsCtx *toolsearch.Context, nameMap *ToolNameMap) (string, []kiroproto.ToolEntry) {
+func buildSystemAndTools(req *anthropic.Request, tsCtx *toolsearch.Context, nameMap *ToolNameMap) (string, []kiroproto.ToolEntry, bool) {
 	systemPrompt := ExtractSystemPrompt(req.System)
+	systemHasCache := SystemHasCacheControl(req.System)
 
 	var toolEntries []kiroproto.ToolEntry
 	if tsCtx != nil {
@@ -79,7 +80,7 @@ func buildSystemAndTools(req *anthropic.Request, tsCtx *toolsearch.Context, name
 		toolEntries = ConvertTools(req.Tools, nameMap)
 		toolEntries = ApplyToolCachePoints(req.Tools, toolEntries)
 	}
-	return systemPrompt, toolEntries
+	return systemPrompt, toolEntries, systemHasCache
 }
 
 // splitMessages splits normalized messages into history messages and the last message.
@@ -110,16 +111,22 @@ var syntheticAckMessageID = uuid.NewSHA1(uuid.NameSpaceURL, []byte("synthetic-ac
 // (user message + synthetic assistant ack), matching the v2 kiro-cli structure.
 // v2 captures show this pair is present in every request, even the first one.
 // Returns a new history slice (original is not mutated) and the updated lastContent.
-func placeSystemPrompt(systemPrompt string, history []kiroproto.HistoryEntry, lastContent string) ([]kiroproto.HistoryEntry, string) {
+func placeSystemPrompt(systemPrompt string, hasCache bool, history []kiroproto.HistoryEntry, lastContent string) ([]kiroproto.HistoryEntry, string) {
 	if systemPrompt == "" {
 		return history, lastContent
 	}
 	// Always build the system prompt pair: user message + synthetic assistant ack.
-	systemPair := []kiroproto.HistoryEntry{
-		{UserInputMessage: &kiroproto.HistoryUserInputMessage{
+	sysEntry := kiroproto.HistoryEntry{
+		UserInputMessage: &kiroproto.HistoryUserInputMessage{
 			Content: systemPrompt,
 			Origin:  kiroproto.OriginKiroCLI,
-		}},
+		},
+	}
+	if hasCache {
+		sysEntry.UserInputMessage.CachePoint = &kiroproto.CachePoint{Type: "default"}
+	}
+	systemPair := []kiroproto.HistoryEntry{
+		sysEntry,
 		{AssistantResponseMessage: &kiroproto.AssistantResponseMessage{
 			MessageID: syntheticAckMessageID,
 			Content:   syntheticAck,
@@ -166,7 +173,7 @@ func buildCurrentMessage(lastMsg anthropic.Message, lastContent, modelID string,
 	// Inject thinking mode XML tags after all content decisions are finalized.
 	// Skip injection for tool-result-only continuations (content="" with toolResults)
 	// to preserve the empty content shape that upstream expects.
-	if thinking && (msg.Content != "" || len(toolResults) == 0) {
+	if false && thinking && (msg.Content != "" || len(toolResults) == 0) {
 		budget := thinkingBudget
 		if budget <= 0 {
 			budget = defaultThinkingBudget

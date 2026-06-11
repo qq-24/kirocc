@@ -11,6 +11,7 @@ import (
 	"github.com/d-kuro/kirocc/internal/logging"
 	"github.com/d-kuro/kirocc/internal/models"
 	"github.com/d-kuro/kirocc/internal/reqconv"
+	"github.com/d-kuro/kirocc/internal/servertool"
 	"github.com/d-kuro/kirocc/internal/toolsearch"
 )
 
@@ -57,6 +58,16 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 
 	thinkingBudget := resolveThinkingBudget(ctx, req)
 
+	// Detect server tools (WebSearch, WebFetch) that we intercept and execute locally.
+	// Keep the tool definitions in req.Tools so Kiro knows the schema.
+	stCtx := servertool.NewContext(req.Tools)
+	if stCtx != nil {
+		slog.InfoContext(ctx, "server tools detected",
+			"trace_id", short,
+			"server_tools", len(stCtx.ServerTools),
+		)
+	}
+
 	// Tool search short-circuits to the orchestrator, which has its own retry loop.
 	if tsCtx := toolsearch.NewContext(req.Tools); tsCtx != nil {
 		refs := reqconv.ExtractToolReferences(req.Messages)
@@ -68,6 +79,12 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 			"active_tools", len(tsCtx.ActiveTools),
 		)
 		s.runToolSearch(ctx, w, req, creds, tsCtx, kiroModel, anthropicModel, contextWindowSize, thinking, thinkingBudget, ccSessionID, short)
+		return
+	}
+
+	// Server tools short-circuit to the server tool orchestrator.
+	if stCtx != nil {
+		s.runServerTools(ctx, w, req, creds, stCtx, kiroModel, anthropicModel, contextWindowSize, thinking, thinkingBudget, ccSessionID, short)
 		return
 	}
 
@@ -141,6 +158,34 @@ func (s *Service) runToolSearch(ctx context.Context, w http.ResponseWriter, req 
 	slog.WarnContext(ctx, "retrying tool search after empty visible end_turn", "trace_id", short)
 	if r2 := orch.run(ctx, w); r2 == retryReasonEmptyVisibleEndTurn {
 		slog.ErrorContext(ctx, "tool search retry also returned empty visible end_turn", "trace_id", short)
+		httpx.WriteError(w, http.StatusBadGateway, errTypeAPI, "upstream returned empty response")
+	}
+}
+
+// runServerTools wires up the server tool orchestrator for web_search/web_fetch interception.
+func (s *Service) runServerTools(ctx context.Context, w http.ResponseWriter, req *anthropic.Request, creds *auth.Credentials, stCtx *servertool.Context, kiroModel, responseModel string, contextWindowSize int, thinking bool, thinkingBudget int, ccSessionID, short string) {
+	orch := &serverToolOrchestrator{
+		service: s,
+		stCtx:   stCtx,
+		req:     req,
+		creds:   creds,
+		buildOpts: reqconv.BuildOptions{
+			ProfileARN:     creds.ProfileARN,
+			ModelID:        kiroModel,
+			ConversationID: ccSessionID,
+			Thinking:       thinking,
+			ThinkingBudget: thinkingBudget,
+		},
+		contextWindowSize: contextWindowSize,
+		responseModel:     responseModel,
+	}
+	reason := orch.run(ctx, w)
+	if reason != retryReasonEmptyVisibleEndTurn {
+		return
+	}
+	slog.WarnContext(ctx, "retrying server tools after empty visible end_turn", "trace_id", short)
+	if r2 := orch.run(ctx, w); r2 == retryReasonEmptyVisibleEndTurn {
+		slog.ErrorContext(ctx, "server tools retry also returned empty visible end_turn", "trace_id", short)
 		httpx.WriteError(w, http.StatusBadGateway, errTypeAPI, "upstream returned empty response")
 	}
 }

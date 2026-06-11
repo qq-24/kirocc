@@ -62,3 +62,13 @@ func ExtractSystemPrompt(system anthropic.SystemPrompt) string {
 	}
 	return strings.Join(parts, "\n")
 }
+
+// SystemHasCacheControl returns true if any system block has cache_control set.
+func SystemHasCacheControl(system anthropic.SystemPrompt) bool {
+	for _, block := range system.Blocks {
+		if block.CacheControl != nil {
+			return true
+		}
+	}
+	return false
+}

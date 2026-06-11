@@ -140,6 +140,8 @@ func (c *HTTPClient) endpointURL(region string) string {
 	if c.baseURL != "" {
 		return c.baseURL
 	}
+	regionMap := map[string]string{"eu-west-1": "eu-central-1"}
+	if mapped, ok := regionMap[region]; ok { region = mapped }
 	return fmt.Sprintf("https://q.%s.amazonaws.com/", region)
 }
 

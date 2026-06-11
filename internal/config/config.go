@@ -39,6 +39,8 @@ func DefaultDBPathFor(goos, home string) string {
 	switch goos {
 	case "darwin":
 		return filepath.Join(home, "Library", "Application Support", "kiro-cli", "data.sqlite3")
+	case "windows":
+		return filepath.Join(home, "AppData", "Local", "Kiro-Cli", "data.sqlite3")
 	default:
 		return filepath.Join(home, ".local", "share", "kiro-cli", "data.sqlite3")
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"strings"
 )
 
 // Request represents an incoming Anthropic Messages API request.
@@ -194,6 +195,12 @@ const (
 	ToolTypeSearchBM25  = "tool_search_tool_bm25_20251119"
 )
 
+// Server tool type prefixes (Anthropic built-in server tools).
+const (
+	ToolTypePrefixWebSearch = "web_search_"
+	ToolTypePrefixWebFetch  = "web_fetch_"
+)
+
 // Content block type constants.
 const (
 	BlockTypeText                   = "text"
@@ -207,6 +214,7 @@ const (
 	BlockTypeToolSearchSearchResult = "tool_search_tool_search_result"
 	BlockTypeToolSearchResultError  = "tool_search_tool_result_error"
 	BlockTypeRedactedThinking       = "redacted_thinking"
+	BlockTypeWebSearchToolResult    = "web_search_tool_result"
 )
 
 // Tool represents a tool definition in the Anthropic API.
@@ -222,6 +230,22 @@ type Tool struct {
 // IsToolSearchTool reports whether this tool is a tool search tool definition.
 func (t Tool) IsToolSearchTool() bool {
 	return t.Type == ToolTypeSearchRegex || t.Type == ToolTypeSearchBM25
+}
+
+// IsServerTool reports whether this tool is an Anthropic built-in server tool
+// (web_search or web_fetch).
+func (t Tool) IsServerTool() bool {
+	return strings.HasPrefix(t.Type, ToolTypePrefixWebSearch) || strings.HasPrefix(t.Type, ToolTypePrefixWebFetch)
+}
+
+// IsWebSearchTool reports whether this tool is a web_search server tool.
+func (t Tool) IsWebSearchTool() bool {
+	return strings.HasPrefix(t.Type, ToolTypePrefixWebSearch)
+}
+
+// IsWebFetchTool reports whether this tool is a web_fetch server tool.
+func (t Tool) IsWebFetchTool() bool {
+	return strings.HasPrefix(t.Type, ToolTypePrefixWebFetch)
 }
 
 // SystemPrompt is a union type: either a plain string or []SystemBlock.
