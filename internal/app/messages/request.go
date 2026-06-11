@@ -71,7 +71,7 @@ func (s *Service) HandleCountTokens(w http.ResponseWriter, r *http.Request) {
 
 // parseAndValidateRequest decodes and validates an Anthropic request from the HTTP body.
 func parseAndValidateRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) (*anthropic.Request, error) {
-	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 	var req anthropic.Request
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		raw, err := io.ReadAll(r.Body)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/d-kuro/kirocc/internal/anthropic"
 	"github.com/d-kuro/kirocc/internal/kiroproto"
@@ -20,8 +21,9 @@ type SSEWriter struct {
 	model      string
 	msgID      string
 	blockIndex int
-	activeType string // "thinking", "text", "tool_use", or ""
-	started    bool
+	activeType         string // "thinking", "text", "tool_use", or ""
+	pendingWhitespace string // buffered whitespace between thinking chunks
+	started           bool
 	writeErr   bool // true if a write/flush to the client failed
 	acc        responseAccumulator
 
@@ -77,12 +79,21 @@ func (s *SSEWriter) HandleEvent(e kiroproto.Event) bool {
 		if d.ThinkingDelta != "" {
 			s.writeThinkingDelta(d)
 		}
-		// Handle text delta.
+		// Handle text delta. Skip whitespace-only text deltas that interrupt thinking blocks.
 		if d.TextDelta != "" {
-			s.ensureStarted()
-			s.fireVisibleOutput()
-			s.switchBlock(anthropic.BlockTypeText)
-			s.writeDelta("text_delta", "text", d.TextDelta)
+			if s.activeType == anthropic.BlockTypeThinking && strings.TrimSpace(d.TextDelta) == "" {
+				// Buffer whitespace; emit it later when real text arrives.
+				s.pendingWhitespace += d.TextDelta
+			} else {
+				s.ensureStarted()
+				s.fireVisibleOutput()
+				s.switchBlock(anthropic.BlockTypeText)
+				if s.pendingWhitespace != "" {
+					s.writeDelta("text_delta", "text", s.pendingWhitespace)
+					s.pendingWhitespace = ""
+				}
+				s.writeDelta("text_delta", "text", d.TextDelta)
+			}
 		}
 		if d.StopSignal {
 			s.Finish()
@@ -185,6 +196,11 @@ func (s *SSEWriter) Finish() {
 	textDelta, thinkingDelta, res := finalizeResult(&s.acc)
 	if thinkingDelta != "" {
 		s.writeThinkingDelta(EventDelta{ThinkingDelta: thinkingDelta})
+	}
+	// Flush any buffered whitespace before final text
+	if s.pendingWhitespace != "" && textDelta != "" {
+		textDelta = s.pendingWhitespace + textDelta
+		s.pendingWhitespace = ""
 	}
 	if textDelta != "" {
 		s.fireVisibleOutput()
