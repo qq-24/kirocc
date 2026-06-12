@@ -24,7 +24,7 @@ func formatContextWindow(size int) string {
 // an explicit output_config.effort. kiro-cli 2.5.1 expresses all reasoning depth
 // through effort, so this carries the "thinking on" intent to the backend. It
 // matches the medium tier the old thinking-XML path defaulted to.
-const defaultThinkingEffort = models.EffortMedium
+const defaultThinkingEffort = models.EffortMax
 
 // resolveEffort maps the request's reasoning intent to a native effort level the
 // resolved Kiro model accepts. Precedence:

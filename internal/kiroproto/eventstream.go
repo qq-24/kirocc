@@ -98,6 +98,9 @@ func ParseStream(ctx context.Context, r io.Reader, callback func(Event) bool) er
 		}
 
 		msgType, eventType := extractFrameHeaders(headers)
+		if eventType != "" {
+			slog.Debug("kiro: raw event", "event_type", eventType)
+		}
 
 		// Handle exception frames (stream-level errors).
 		if msgType == "exception" {

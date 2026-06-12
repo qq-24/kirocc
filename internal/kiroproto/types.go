@@ -22,16 +22,20 @@ type Payload struct {
 	AdditionalModelRequestFields *AdditionalModelRequestFields `json:"additionalModelRequestFields,omitempty"`
 }
 
-// AdditionalModelRequestFields carries model-specific request options. kiro-cli
-// 2.5.1 sends this at the request root (sibling of conversationState/profileArn)
-// and currently only populates output_config.effort.
+// AdditionalModelRequestFields carries model-specific request options.
 type AdditionalModelRequestFields struct {
 	OutputConfig *OutputConfig `json:"output_config,omitempty"`
+	Thinking     *Thinking     `json:"thinking,omitempty"`
 }
 
-// OutputConfig carries the reasoning effort level (low/medium/high/xhigh/max).
+// OutputConfig carries the reasoning effort level (low/medium/high/max).
 type OutputConfig struct {
 	Effort string `json:"effort,omitempty"`
+}
+
+// Thinking controls the thinking/reasoning mode.
+type Thinking struct {
+	Type string `json:"type"`
 }
 
 // ConversationState holds the conversation context for the Kiro API.

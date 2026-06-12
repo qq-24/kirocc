@@ -33,14 +33,14 @@ const (
 // Bump these together when targeting a new kiro-cli version; the
 // TestUserAgent_Documents251 drift guard fails if the assembled strings change.
 const (
-	appVersion              = "2.5.1"
+	appVersion              = "2.6.1"
 	awsSDKRustVersion       = "1.3.15"
 	codewhispererAPIVersion = "0.1.16551"
 )
 
 var (
-	userAgentValue    = fmt.Sprintf("aws-sdk-rust/%s ua/2.1 api/codewhispererstreaming/%s os/macos lang/rust/1.92.0 md/appVersion-%s app/AmazonQ-For-CLI", awsSDKRustVersion, codewhispererAPIVersion, appVersion)
-	amzUserAgentValue = fmt.Sprintf("aws-sdk-rust/%s ua/2.1 api/codewhispererstreaming/%s os/macos lang/rust/1.92.0 m/F app/AmazonQ-For-CLI", awsSDKRustVersion, codewhispererAPIVersion)
+	userAgentValue    = fmt.Sprintf("aws-sdk-rust/%s ua/2.1 api/codewhispererstreaming/%s os/windows lang/rust/1.92.0 md/appVersion-%s app/AmazonQ-For-CLI", awsSDKRustVersion, codewhispererAPIVersion, appVersion)
+	amzUserAgentValue = fmt.Sprintf("aws-sdk-rust/%s ua/2.1 api/codewhispererstreaming/%s os/windows lang/rust/1.92.0 m/F app/AmazonQ-For-CLI", awsSDKRustVersion, codewhispererAPIVersion)
 )
 
 // Client is the interface for calling the Kiro API.
@@ -153,6 +153,10 @@ func (c *HTTPClient) recordError(ctx context.Context, err error) {
 func (c *HTTPClient) endpointURL(region string) string {
 	if c.baseURL != "" {
 		return c.baseURL
+	}
+	regionMap := map[string]string{"eu-west-1": "eu-central-1"}
+	if mapped, ok := regionMap[region]; ok {
+		region = mapped
 	}
 	return fmt.Sprintf("https://runtime.%s.kiro.dev/", region)
 }
