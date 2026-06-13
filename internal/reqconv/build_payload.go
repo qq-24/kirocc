@@ -67,7 +67,6 @@ func BuildPayload(req *anthropic.Request, options BuildOptions) (*kiroproto.Payl
 		payload.AdditionalModelRequestFields = &kiroproto.AdditionalModelRequestFields{
 			OutputConfig: &kiroproto.OutputConfig{Effort: options.Effort},
 			Thinking:     &kiroproto.Thinking{Type: "adaptive"},
-			
 		}
 	}
 	return payload, nameMap, nil
