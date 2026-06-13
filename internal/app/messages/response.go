@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -40,13 +41,28 @@ func (s *Service) handleStreamingResponse(ctx context.Context, w http.ResponseWr
 	var localStop bool
 	var invalidReason string
 	var isException bool
+	t0 := time.Now()
+	var eventCount int
 	err := kiroproto.ParseStream(ctx, apiResp.Body, func(e kiroproto.Event) bool {
+		eventCount++
+		if eventCount <= 5 || eventCount%20 == 0 {
+			slog.DebugContext(ctx, "stream event",
+				"trace_id", short,
+				"event_num", eventCount,
+				"event_type", e.Type,
+				"elapsed", time.Since(t0).String(),
+			)
+		}
 		capture.recordEvent(e)
 		if streamErr || localStop {
 			return true
 		}
 		// Stop early if the client disconnected (write failed).
 		if sw.WriteErr() {
+			slog.WarnContext(ctx, "client write error",
+				"trace_id", short,
+				"event_num", eventCount,
+			)
 			streamErr = true
 			return true
 		}
@@ -85,6 +101,15 @@ func (s *Service) handleStreamingResponse(ctx context.Context, w http.ResponseWr
 		return true
 	})
 
+	slog.InfoContext(ctx, "stream complete",
+		"trace_id", short,
+		"events", eventCount,
+		"elapsed", time.Since(t0).String(),
+		"stream_err", streamErr,
+		"local_stop", localStop,
+		"parse_err", fmt.Sprintf("%v", err),
+	)
+
 	if streamErr && !sw.Started() {
 		return handleUpstreamError(w, isException, invalidReason)
 	}
@@ -106,23 +131,8 @@ func (s *Service) handleStreamingResponse(ctx context.Context, w http.ResponseWr
 		sw.Finish()
 	}
 
-	// Detect empty visible end_turn (thinking-only response with no visible text).
-	// If the GateWriter hasn't been promoted yet, we can safely discard and retry.
-	if !streamErr && !localStop && sw.IsEmptyVisibleEndTurn() && !gw.IsPromoted() {
-		gw.Discard()
-		args := []any{
-			"trace_id", short,
-			"thinking_chars", sw.ThinkingLen(),
-			"has_tool_use", false,
-			"retry", true,
-		}
-		args = append(args, capture.logAttrs()...)
-		slog.WarnContext(ctx, "empty visible end_turn detected", args...)
-		if credits, ok := sw.Credits(); ok {
-			logAbortedAttemptCredits(ctx, short, credits, retryReasonEmptyVisibleEndTurn)
-		}
-		return retryReasonEmptyVisibleEndTurn
-	}
+	// Thinking is now streamed immediately (GateWriter promoted on first thinking delta),
+	// so empty-visible-end-turn retry is no longer possible once thinking has been sent.
 
 	// Log response completion (only on success).
 	if !streamErr {

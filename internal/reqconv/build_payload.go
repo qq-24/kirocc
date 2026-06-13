@@ -108,7 +108,7 @@ func splitMessages(msgs []anthropic.Message) (history []anthropic.Message, last 
 // syntheticAck is the synthetic assistant acknowledgment that kiro-cli always
 // inserts after the system prompt in history. v2 captures confirm this is present
 // in every request.
-const syntheticAck = "I will fully incorporate this information when generating my responses, and explicitly acknowledge relevant parts of the summary when answering questions."
+const syntheticAck = "Understood."
 
 // syntheticAckMessageID is a deterministic UUID for the synthetic ack, computed once since the input is constant.
 var syntheticAckMessageID = uuid.NewSHA1(uuid.NameSpaceURL, []byte("synthetic-ack:"+syntheticAck)).String()

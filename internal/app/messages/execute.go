@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/d-kuro/kirocc/internal/anthropic"
 	"github.com/d-kuro/kirocc/internal/auth"
@@ -32,12 +33,31 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	_, short := logging.TraceIDs(ctx)
 	capture := newUpstreamAttemptCapture(ctx, s.captureEnabled, inv.payload, inv.model, inv.thinking, inv.req.Stream, attempt)
 
+	t0 := time.Now()
+	slog.InfoContext(ctx, "upstream call",
+		"trace_id", short,
+		"attempt", attempt,
+		"model", inv.model,
+		"stream", inv.req.Stream,
+	)
+
 	apiResp, err := s.client.GenerateAssistantResponse(ctx, inv.creds.AccessToken, inv.payload, inv.creds.Region)
 	if err != nil {
+		slog.ErrorContext(ctx, "upstream error",
+			"trace_id", short,
+			"elapsed", time.Since(t0).String(),
+			"err", err,
+		)
 		logUpstreamError(ctx, short, err)
 		httpx.WriteError(w, http.StatusBadGateway, errTypeAPI, "upstream API error")
 		return ""
 	}
+	slog.InfoContext(ctx, "upstream responded",
+		"trace_id", short,
+		"elapsed", time.Since(t0).String(),
+		"status", apiResp.StatusCode,
+		"prompt_tokens", apiResp.PromptTokens,
+	)
 	body := apiResp.Body
 	defer func() { _ = body.Close() }()
 	if capture != nil {

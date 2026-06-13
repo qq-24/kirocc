@@ -343,6 +343,7 @@ func (s *SSEWriter) RecordTail(e kiroproto.Event) {
 // writeThinkingDelta writes a thinking_delta SSE event using direct formatting.
 func (s *SSEWriter) writeThinkingDelta(d EventDelta) {
 	s.ensureStarted()
+	s.fireVisibleOutput()
 	s.switchBlock(anthropic.BlockTypeThinking)
 	s.writeDelta("thinking_delta", "thinking", d.ThinkingDelta)
 }

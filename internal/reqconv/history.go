@@ -8,7 +8,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// extractToolUseIDs returns the IDs of all tool_use blocks in a message's content.
+// extractThinkingText concatenates all thinking block content from a message.
+func extractThinkingText(content anthropic.MessageContent) string {
+	if content.IsString() {
+		return ""
+	}
+	var parts []string
+	for _, b := range content.Blocks {
+		if b.Type == anthropic.BlockTypeThinking && b.Thinking != "" {
+			parts = append(parts, b.Thinking)
+		}
+	}
+	return strings.Join(parts, "\n")
+}
 func extractToolUseIDs(msg anthropic.Message) []string {
 	if msg.Content.IsString() {
 		return nil
@@ -51,6 +63,15 @@ func buildHistory(msgs []anthropic.Message, nameMap *ToolNameMap) []kiroproto.Hi
 
 		case "assistant":
 			content := ExtractTextContent(msg.Content)
+			// Include thinking content in history so the model can see its own
+			// prior reasoning and avoid repeating conclusions.
+			if thinking := extractThinkingText(msg.Content); thinking != "" {
+				if content == "" {
+					content = "<thinking>\n" + thinking + "\n</thinking>"
+				} else {
+					content = "<thinking>\n" + thinking + "\n</thinking>\n\n" + content
+				}
+			}
 			// Generate a deterministic messageId from content + toolUseIDs.
 			// v3 captures show messageId must be stable across requests for the same
 			// assistant history entry. Using SHA1-based UUID ensures this.

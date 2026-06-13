@@ -11,13 +11,19 @@ func (a *responseAccumulator) estimatedOutputTokens() int {
 }
 
 // resolvedUsage returns the best available input and output token counts.
-// Priority: metadata/metering > pre-counted (tiktoken) > contextUsage estimate > 0.
+// Priority: pre-counted (tiktoken) > metadata/metering > contextUsage estimate > 0.
+// PreCounted is preferred because Kiro's metadataEvent reports inflated server-side
+// totals that include internal history, causing Claude Code to compact prematurely.
 func (a *responseAccumulator) resolvedUsage() (inputTokens, outputTokens int) {
+	if a.PreCountedInputTokens > 0 {
+		outputTokens = a.OutputTokens
+		if outputTokens == 0 {
+			outputTokens = a.estimatedOutputTokens()
+		}
+		return a.PreCountedInputTokens, outputTokens
+	}
 	if a.HasMetadata || a.InputTokens > 0 || a.OutputTokens > 0 {
 		return a.InputTokens, a.OutputTokens
-	}
-	if a.PreCountedInputTokens > 0 {
-		return a.PreCountedInputTokens, a.estimatedOutputTokens()
 	}
 	if a.HasContextUsage && a.ContextWindowSize > 0 {
 		pct := max(0, min(100, a.ContextUsagePercentage))
