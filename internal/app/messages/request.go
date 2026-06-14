@@ -19,11 +19,12 @@ import (
 
 // HandleCountTokens serves POST /v1/messages/count_tokens.
 func (s *Service) HandleCountTokens(w http.ResponseWriter, r *http.Request) {
-	req, err := parseAndValidateRequest(r.Context(), w, r)
+	req, inputTokens, err := parseAndValidateRequest(r.Context(), w, r)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, err.Error())
 		return
 	}
+	_ = inputTokens
 
 	profileARN := ""
 	if creds, err := s.auth.GetToken(r.Context()); err == nil {
@@ -70,25 +71,23 @@ func (s *Service) HandleCountTokens(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseAndValidateRequest decodes and validates an Anthropic request from the HTTP body.
-func parseAndValidateRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) (*anthropic.Request, error) {
+// Returns the parsed request and the token count of the original request body.
+func parseAndValidateRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) (*anthropic.Request, int, error) {
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
-	var req anthropic.Request
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, 0, fmt.Errorf("invalid request: %w", err)
+	}
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		raw, err := io.ReadAll(r.Body)
-		if err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
 		slog.DebugContext(ctx, "client request body", "request_body", jsontext.Value(raw))
-		if err := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(raw)), &req); err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
-	} else {
-		if err := json.UnmarshalRead(r.Body, &req); err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
+	}
+	var req anthropic.Request
+	if err := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(raw)), &req); err != nil {
+		return nil, 0, fmt.Errorf("invalid request: %w", err)
 	}
 	if len(req.Messages) == 0 {
-		return nil, fmt.Errorf("messages must not be empty")
+		return nil, 0, fmt.Errorf("messages must not be empty")
 	}
-	return &req, nil
+	inputTokens, _ := tokencount.CountBytes(raw)
+	return &req, inputTokens, nil
 }

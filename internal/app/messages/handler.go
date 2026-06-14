@@ -26,7 +26,7 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 		"content_length", r.Header.Get("Content-Length"),
 	)
 
-	req, err := parseAndValidateRequest(ctx, w, r)
+	req, inputTokens, err := parseAndValidateRequest(ctx, w, r)
 	if err != nil {
 		slog.WarnContext(ctx, "invalid request", "trace_id", short, "err", err)
 		httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, err.Error())
@@ -35,7 +35,7 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 
 	ccSessionID := r.Header.Get(headerCCSessionID)
 	if ccSessionID == "" {
-		ccSessionID = "auto-" + logging.NewTraceID()
+		ccSessionID = reqconv.DeriveSessionID(req)
 	}
 	ctx = logging.WithSessionID(ctx, ccSessionID)
 	r = r.WithContext(ctx)
@@ -97,6 +97,7 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 		contextWindowSize: contextWindowSize,
 		thinking:          thinking,
 		toolNameMap:       nameMap.ReverseMap(),
+		inputTokens:       inputTokens,
 	})
 }
 

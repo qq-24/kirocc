@@ -24,6 +24,7 @@ type invocation struct {
 	contextWindowSize int
 	thinking          bool
 	toolNameMap       map[string]string
+	inputTokens       int // tiktoken count of original client request body
 }
 
 // callAndHandle performs one upstream call for the invocation and streams or
@@ -66,9 +67,9 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 
 	var reason string
 	if inv.req.Stream {
-		reason = s.handleStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap)
+		reason = s.handleStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, inv.inputTokens, capture, inv.toolNameMap)
 	} else {
-		reason = s.handleNonStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap)
+		reason = s.handleNonStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, inv.inputTokens, capture, inv.toolNameMap)
 	}
 	if reason == retryReasonEmptyVisibleEndTurn {
 		capture.logCapture(ctx, reason)
