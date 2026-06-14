@@ -164,8 +164,11 @@ func buildCurrentMessage(lastMsg anthropic.Message, lastContent, modelID string,
 		msg.UserInputMessageContext = ctx
 	}
 
-	// Match the observed kiro-cli continuation shape:
-	// tool-result-only turns keep empty currentMessage.content instead of "Continue".
+	// tool-result-only turns: inject a continuation directive so the model
+	// focuses thinking on analyzing results rather than noting "empty message."
+	if msg.Content == "" && len(toolResults) > 0 {
+		msg.Content = "Analyze the tool results above. Continue executing the task — decide and act on the next step immediately."
+	}
 	if msg.Content == "" && len(toolResults) == 0 {
 		msg.Content = syntheticContinue
 	}
