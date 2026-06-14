@@ -42,6 +42,11 @@ func buildHistory(msgs []anthropic.Message, nameMap *ToolNameMap) []kiroproto.Hi
 		switch msg.Role {
 		case "user":
 			content := ExtractTextContent(msg.Content)
+			toolResults := ExtractToolResults(msg.Content)
+			// tool-result-only user messages: inject directive instead of empty content.
+			if content == "" && len(toolResults) > 0 {
+				content = "(tool results)"
+			}
 			userMsg := &kiroproto.HistoryUserInputMessage{
 				Content: content,
 				Origin:  kiroproto.OriginKiroCLI,
@@ -49,7 +54,6 @@ func buildHistory(msgs []anthropic.Message, nameMap *ToolNameMap) []kiroproto.Hi
 			if images := ExtractImages(msg.Content); len(images) > 0 {
 				userMsg.Images = images
 			}
-			toolResults := ExtractToolResults(msg.Content)
 			// Reorder tool results to match the preceding assistant's tool_use order.
 			if len(toolResults) > 1 && i > 0 && msgs[i-1].Role == "assistant" {
 				toolResults = ReorderToolResults(toolResults, extractToolUseIDs(msgs[i-1]))
