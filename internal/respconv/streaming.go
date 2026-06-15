@@ -242,7 +242,7 @@ func (s *SSEWriter) ensureStarted() {
 			"model":         s.model,
 			"stop_reason":   nil,
 			"stop_sequence": nil,
-			"usage":         s.acc.UsageMap(0, 0),
+			"usage":         s.acc.UsageMap(s.acc.PreCountedInputTokens, 0),
 		},
 	})
 }

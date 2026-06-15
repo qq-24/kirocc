@@ -39,12 +39,15 @@ func (a *responseAccumulator) resolvedUsage() (inputTokens, outputTokens int) {
 func (a *responseAccumulator) UsageMap(inputTokens, outputTokens int) map[string]any {
 	cacheRead := a.CacheReadInputTokens
 	cacheWrite := a.CacheWriteInputTokens
+	uncached := inputTokens
 	// If backend doesn't report cache stats, assume 95% cache read for cost estimation.
+	// Anthropic format: input_tokens = uncached only, cache_read = cached portion.
 	if cacheRead == 0 && cacheWrite == 0 && inputTokens > 0 {
 		cacheRead = inputTokens * 95 / 100
+		uncached = inputTokens - cacheRead
 	}
 	return map[string]any{
-		"input_tokens":                inputTokens,
+		"input_tokens":                uncached,
 		"output_tokens":               outputTokens,
 		"cache_read_input_tokens":     cacheRead,
 		"cache_creation_input_tokens": cacheWrite,
