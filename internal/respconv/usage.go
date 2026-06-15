@@ -37,10 +37,16 @@ func (a *responseAccumulator) resolvedUsage() (inputTokens, outputTokens int) {
 
 // UsageMap builds an Anthropic-compatible usage map from the given token counts.
 func (a *responseAccumulator) UsageMap(inputTokens, outputTokens int) map[string]any {
+	cacheRead := a.CacheReadInputTokens
+	cacheWrite := a.CacheWriteInputTokens
+	// If backend doesn't report cache stats, assume 95% cache read for cost estimation.
+	if cacheRead == 0 && cacheWrite == 0 && inputTokens > 0 {
+		cacheRead = inputTokens * 95 / 100
+	}
 	return map[string]any{
 		"input_tokens":                inputTokens,
 		"output_tokens":               outputTokens,
-		"cache_read_input_tokens":     a.CacheReadInputTokens,
-		"cache_creation_input_tokens": a.CacheWriteInputTokens,
+		"cache_read_input_tokens":     cacheRead,
+		"cache_creation_input_tokens": cacheWrite,
 	}
 }
