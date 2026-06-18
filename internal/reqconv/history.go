@@ -124,5 +124,13 @@ func buildHistory(msgs []anthropic.Message, nameMap *ToolNameMap) []kiroproto.Hi
 			history = append(history, kiroproto.HistoryEntry{AssistantResponseMessage: arm})
 		}
 	}
+	// Mark the last assistant message with cachePoint so the entire history
+	// prefix is cacheable on subsequent requests.
+	for i := len(history) - 1; i >= 0; i-- {
+		if history[i].AssistantResponseMessage != nil {
+			history[i].AssistantResponseMessage.CachePoint = &kiroproto.CachePoint{Type: "default"}
+			break
+		}
+	}
 	return history
 }
