@@ -128,8 +128,9 @@ func placeSystemPrompt(systemPrompt string, history []kiroproto.HistoryEntry, la
 			Origin:  kiroproto.OriginKiroCLI,
 		}},
 		{AssistantResponseMessage: &kiroproto.AssistantResponseMessage{
-			MessageID: syntheticAckMessageID,
-			Content:   syntheticAck,
+			MessageID:  syntheticAckMessageID,
+			Content:    syntheticAck,
+			CachePoint: &kiroproto.CachePoint{Type: "default"},
 		}},
 	}
 	newHistory := make([]kiroproto.HistoryEntry, 0, len(systemPair)+len(history))
