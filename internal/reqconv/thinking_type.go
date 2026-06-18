@@ -1,12 +1,7 @@
 package reqconv
 
-import "os"
-
-// ResolveThinkingType returns the thinking type to send to Kiro backend.
-// Defaults to "adaptive". Set KIROCC_THINKING_TYPE=enabled to force thinking on every request.
+// ResolveThinkingType returns the thinking type for Kiro backend.
+// Only "adaptive" and "disabled" are accepted. "enabled" causes 500.
 func ResolveThinkingType() string {
-	if v := os.Getenv("KIROCC_THINKING_TYPE"); v != "" {
-		return v
-	}
 	return "adaptive"
 }
