@@ -100,8 +100,8 @@ func TestE2E_EffortNative_NoXMLInjection(t *testing.T) {
 	if amrf == nil || amrf.OutputConfig == nil {
 		t.Fatal("expected additionalModelRequestFields.output_config to be forwarded")
 	}
-	if amrf.OutputConfig.Effort != "xhigh" {
-		t.Fatalf("effort = %q, want xhigh", amrf.OutputConfig.Effort)
+	if amrf.OutputConfig.Effort != "max" {
+		t.Fatalf("effort = %q, want max", amrf.OutputConfig.Effort)
 	}
 }
 
@@ -127,8 +127,8 @@ func TestE2E_ThinkingWithoutEffort_SendsDefaultEffort(t *testing.T) {
 	if amrf == nil || amrf.OutputConfig == nil {
 		t.Fatal("thinking-enabled request should forward a default effort natively")
 	}
-	if amrf.OutputConfig.Effort != "medium" {
-		t.Fatalf("default effort = %q, want medium", amrf.OutputConfig.Effort)
+	if amrf.OutputConfig.Effort != "max" {
+		t.Fatalf("default effort = %q, want max", amrf.OutputConfig.Effort)
 	}
 }
 

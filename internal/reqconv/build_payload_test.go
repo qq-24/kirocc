@@ -191,10 +191,10 @@ func TestBuildPayload_ToolUseFlow(t *testing.T) {
 	if len(ctx.Tools) != 1 {
 		t.Fatalf("tools len = %d", len(ctx.Tools))
 	}
-	if cs.CurrentMessage.UserInputMessage.Content != "" {
-		t.Fatalf("currentMessage.content = %q, want empty", cs.CurrentMessage.UserInputMessage.Content)
+	wantContent := "Analyze the tool results above. Continue executing the task — decide and act on the next step immediately."
+	if cs.CurrentMessage.UserInputMessage.Content != wantContent {
+		t.Fatalf("currentMessage.content = %q, want continuation directive", cs.CurrentMessage.UserInputMessage.Content)
 	}
-	// History should have assistant with toolUses.
 	if len(cs.History) != 2 {
 		t.Fatalf("history len = %d", len(cs.History))
 	}
@@ -571,9 +571,10 @@ func TestBuildPayload_Doc09_FullExample(t *testing.T) {
 	if cs.AgentTaskType != "vibe" {
 		t.Fatalf("agentTaskType = %q", cs.AgentTaskType)
 	}
-	// tool_result-only continuation should keep empty currentMessage.content.
-	if cs.CurrentMessage.UserInputMessage.Content != "" {
-		t.Fatalf("currentMessage.content = %q, want empty", cs.CurrentMessage.UserInputMessage.Content)
+	// tool_result-only continuation injects a directive.
+	wantDirective := "Analyze the tool results above. Continue executing the task — decide and act on the next step immediately."
+	if cs.CurrentMessage.UserInputMessage.Content != wantDirective {
+		t.Fatalf("currentMessage.content = %q, want continuation directive", cs.CurrentMessage.UserInputMessage.Content)
 	}
 	// Tool results
 	ctx := cs.CurrentMessage.UserInputMessage.UserInputMessageContext

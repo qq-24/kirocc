@@ -33,6 +33,7 @@ type invocation struct {
 func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv *invocation, attempt int) string {
 	_, short := logging.TraceIDs(ctx)
 	capture := newUpstreamAttemptCapture(ctx, s.captureEnabled, inv.payload, inv.model, inv.thinking, inv.req.Stream, attempt)
+	dumpPayload(inv.payload, inv.model)
 
 	t0 := time.Now()
 	slog.InfoContext(ctx, "upstream call",

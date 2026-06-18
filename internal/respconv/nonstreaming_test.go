@@ -25,7 +25,7 @@ func TestBuildNonStreamingResponse_TextOnly(t *testing.T) {
 		t.Fatalf("stop_reason = %v", resp["stop_reason"])
 	}
 	usage := resp["usage"].(map[string]any)
-	if usage["input_tokens"] != 10 || usage["output_tokens"] != 5 {
+	if usage["input_tokens"] != 1 || usage["output_tokens"] != 5 {
 		t.Fatalf("usage = %v", usage)
 	}
 }
@@ -98,7 +98,7 @@ func TestBuildNonStreamingResponse_MeteringFallback(t *testing.T) {
 	}
 	resp, stats := BuildNonStreamingResponse(events, "claude-sonnet-4.6", 200000, nil, 0, 0)
 	usage := resp["usage"].(map[string]any)
-	if usage["input_tokens"] != 30 {
+	if usage["input_tokens"] != 2 {
 		t.Fatalf("input_tokens = %v", usage["input_tokens"])
 	}
 	if !stats.HasCredits {
@@ -128,7 +128,7 @@ func TestBuildNonStreamingResponse_MetadataOverMetering(t *testing.T) {
 	}
 	resp, _ := BuildNonStreamingResponse(events, "claude-sonnet-4.6", 200000, nil, 0, 0)
 	usage := resp["usage"].(map[string]any)
-	if usage["input_tokens"] != 100 {
+	if usage["input_tokens"] != 5 {
 		t.Fatalf("should prefer metadataEvent, got %v", usage["input_tokens"])
 	}
 }

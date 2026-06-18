@@ -224,8 +224,8 @@ func TestHTTPClient_400_NoRetry(t *testing.T) {
 // version drift — the strings have no other compile-time guard.
 func TestUserAgent_Documents251(t *testing.T) {
 	const (
-		wantUA    = "aws-sdk-rust/1.3.15 ua/2.1 api/codewhispererstreaming/0.1.16551 os/macos lang/rust/1.92.0 md/appVersion-2.5.1 app/AmazonQ-For-CLI"
-		wantAmzUA = "aws-sdk-rust/1.3.15 ua/2.1 api/codewhispererstreaming/0.1.16551 os/macos lang/rust/1.92.0 m/F app/AmazonQ-For-CLI"
+		wantUA    = "aws-sdk-rust/1.3.15 ua/2.1 api/codewhispererstreaming/0.1.16551 os/windows lang/rust/1.92.0 md/appVersion-2.6.1 app/AmazonQ-For-CLI"
+		wantAmzUA = "aws-sdk-rust/1.3.15 ua/2.1 api/codewhispererstreaming/0.1.16551 os/windows lang/rust/1.92.0 m/F app/AmazonQ-For-CLI"
 	)
 	var gotUA, gotAmzUA string
 	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

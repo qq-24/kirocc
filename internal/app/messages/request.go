@@ -89,5 +89,19 @@ func parseAndValidateRequest(ctx context.Context, w http.ResponseWriter, r *http
 		return nil, 0, fmt.Errorf("messages must not be empty")
 	}
 	inputTokens, _ := tokencount.CountBytes(raw)
+	if requestHasImages(&req) {
+		inputTokens = 0
+	}
 	return &req, inputTokens, nil
+}
+
+func requestHasImages(req *anthropic.Request) bool {
+	for i := range req.Messages {
+		for _, b := range req.Messages[i].Content.Blocks {
+			if b.Type == anthropic.BlockTypeImage {
+				return true
+			}
+		}
+	}
+	return false
 }

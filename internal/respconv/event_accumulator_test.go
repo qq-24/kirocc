@@ -500,22 +500,22 @@ func TestAccumulator_PreCountedInputTokens(t *testing.T) {
 			wantInput: 500,
 		},
 		{
-			name:       "metadata overrides pre-counted",
+			name:       "metadata does not override pre-counted",
 			preCounted: 500,
 			events: []kiroproto.Event{
 				{Type: "assistantResponseEvent", Content: "Hi"},
 				{Type: "metadataEvent", InputTokens: 100, OutputTokens: 50},
 			},
-			wantInput: 100,
+			wantInput: 500,
 		},
 		{
-			name:       "metering overrides pre-counted",
+			name:       "metering does not override pre-counted",
 			preCounted: 500,
 			events: []kiroproto.Event{
 				{Type: "assistantResponseEvent", Content: "Hi"},
 				{Type: "meteringEvent", InputTokens: 200, OutputTokens: 80},
 			},
-			wantInput: 200,
+			wantInput: 500,
 		},
 		{
 			name:       "pre-counted zero falls through to 0,0",

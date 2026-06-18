@@ -66,7 +66,7 @@ func BuildPayload(req *anthropic.Request, options BuildOptions) (*kiroproto.Payl
 	if options.Effort != "" {
 		payload.AdditionalModelRequestFields = &kiroproto.AdditionalModelRequestFields{
 			OutputConfig: &kiroproto.OutputConfig{Effort: options.Effort},
-			Thinking:     &kiroproto.Thinking{Type: "adaptive"},
+			Thinking:     &kiroproto.Thinking{Type: ResolveThinkingType()},
 		}
 	}
 	return payload, nameMap, nil
