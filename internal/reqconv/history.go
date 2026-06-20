@@ -89,9 +89,9 @@ func buildHistory(msgs []anthropic.Message, nameMap *ToolNameMap) []kiroproto.Hi
 		case "assistant":
 			content := ExtractTextContent(msg.Content)
 			allToolUses := ExtractToolUses(msg.Content)
-			// Preserve thinking only for assistant messages AFTER the last real
+			// Preserve thinking for assistant messages AFTER the last real
 			// user message (current react loop). Strip all older thinking.
-			if i > lastRealUserIdx && len(allToolUses) > 0 {
+			if i > lastRealUserIdx {
 				if thinking := extractThinkingText(msg.Content); thinking != "" {
 					if content == "" {
 						content = "<thinking>\n" + thinking + "\n</thinking>"

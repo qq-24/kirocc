@@ -1,20 +1,16 @@
 package reqconv
 
 import (
-	"log/slog"
 	"maps"
 )
 
 // unsupportedKeywords lists JSON Schema keywords that Kiro API rejects.
 var unsupportedKeywords = map[string]struct{}{
-	"additionalProperties":  {},
 	"$schema":               {},
 	"propertyNames":         {},
 	"default":               {},
 	"exclusiveMinimum":      {},
 	"exclusiveMaximum":      {},
-	"$defs":                 {},
-	"$ref":                  {},
 	"patternProperties":     {},
 	"if":                    {},
 	"then":                  {},
@@ -26,8 +22,6 @@ var unsupportedKeywords = map[string]struct{}{
 	"unevaluatedItems":      {},
 	"contentMediaType":      {},
 	"contentEncoding":       {},
-	"format":                {},
-	"pattern":               {},
 	"minLength":             {},
 	"maxLength":             {},
 	"minimum":               {},
@@ -93,10 +87,18 @@ func SanitizeJSONSchema(schema map[string]any) map[string]any {
 					if m, ok := nonNull[0].(map[string]any); ok {
 						maps.Copy(result, SanitizeJSONSchema(m))
 					}
-				} else if first, ok := arr[0].(map[string]any); ok {
-					slog.Warn("lossy schema conversion: using first branch only",
-						"combinator", key, "branches", len(arr))
-					maps.Copy(result, SanitizeJSONSchema(first))
+				} else {
+					// Preserve the full anyOf/oneOf array (with nulls dropped) — Kiro backend accepts it.
+					branches := dropNullBranches(arr)
+					sanitized := make([]any, 0, len(branches))
+					for _, item := range branches {
+						if m, ok := item.(map[string]any); ok {
+							sanitized = append(sanitized, SanitizeJSONSchema(m))
+						} else {
+							sanitized = append(sanitized, item)
+						}
+					}
+					result[key] = sanitized
 				}
 			}
 		case "allOf":

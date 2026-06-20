@@ -38,7 +38,11 @@ func TestApplyToolCachePoints_NoCacheControl(t *testing.T) {
 		{ToolSpecification: &kiroproto.ToolSpecification{Name: "b"}},
 	}
 	got := ApplyToolCachePoints(tools, entries)
-	if len(got) != 2 {
-		t.Fatalf("got %d entries, want 2", len(got))
+	// 2 tools + 1 trailing cachePoint = 3
+	if len(got) != 3 {
+		t.Fatalf("got %d entries, want 3", len(got))
+	}
+	if got[2].CachePoint == nil {
+		t.Fatal("last entry should be trailing cachePoint")
 	}
 }

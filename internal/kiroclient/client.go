@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -153,6 +154,9 @@ func (c *HTTPClient) recordError(ctx context.Context, err error) {
 func (c *HTTPClient) endpointURL(region string) string {
 	if c.baseURL != "" {
 		return c.baseURL
+	}
+	if override := os.Getenv("KIROCC_REGION_OVERRIDE"); override != "" {
+		region = override
 	}
 	regionMap := map[string]string{"eu-west-1": "eu-central-1"}
 	if mapped, ok := regionMap[region]; ok {

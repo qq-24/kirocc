@@ -65,20 +65,20 @@ func TestConvertTools_LongNameShortened(t *testing.T) {
 	}
 }
 
-func TestSanitizeJSONSchema_RemovesAdditionalProperties(t *testing.T) {
+func TestSanitizeJSONSchema_PreservesAdditionalProperties(t *testing.T) {
 	schema := map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
 		"properties":           map[string]any{"x": map[string]any{"type": "string", "additionalProperties": true}},
 	}
 	got := SanitizeJSONSchema(schema)
-	if _, ok := got["additionalProperties"]; ok {
-		t.Fatal("additionalProperties should be removed")
+	if _, ok := got["additionalProperties"]; !ok {
+		t.Fatal("additionalProperties should be preserved")
 	}
 	props := got["properties"].(map[string]any)
 	x := props["x"].(map[string]any)
-	if _, ok := x["additionalProperties"]; ok {
-		t.Fatal("nested additionalProperties should be removed")
+	if _, ok := x["additionalProperties"]; !ok {
+		t.Fatal("nested additionalProperties should be preserved")
 	}
 }
 
@@ -199,14 +199,7 @@ func TestSanitizeJSONSchema_OneOfNullable_NoWarning(t *testing.T) {
 	}
 }
 
-func TestSanitizeJSONSchema_AnyOfNullableMultiNonNull_LogsWarning(t *testing.T) {
-	// When null is removed but 2+ non-null branches remain, lossy fallback should still fire.
-	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	old := slog.Default()
-	slog.SetDefault(logger)
-	defer slog.SetDefault(old)
-
+func TestSanitizeJSONSchema_AnyOfNullableMultiNonNull_PreservesBranches(t *testing.T) {
 	schema := map[string]any{
 		"anyOf": []any{
 			map[string]any{"type": "string"},
@@ -215,53 +208,47 @@ func TestSanitizeJSONSchema_AnyOfNullableMultiNonNull_LogsWarning(t *testing.T) 
 		},
 	}
 	got := SanitizeJSONSchema(schema)
-
-	if got["type"] != "string" {
-		t.Fatalf("expected first non-null branch type, got %v", got["type"])
+	// null branch dropped, remaining 2 branches preserved as anyOf array
+	arr, ok := got["anyOf"].([]any)
+	if !ok {
+		t.Fatalf("expected anyOf array preserved, got %v", got)
 	}
-	if !strings.Contains(buf.String(), "anyOf") {
-		t.Fatalf("expected lossy warning, got: %q", buf.String())
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 non-null branches, got %d", len(arr))
 	}
 }
 
-func TestSanitizeJSONSchema_AnyOfNonEnum_LogsWarning(t *testing.T) {
-	// When anyOf has non-enum branches, the lossy first-branch fallback should log a warning.
-	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	old := slog.Default()
-	slog.SetDefault(logger)
-	defer slog.SetDefault(old)
-
+func TestSanitizeJSONSchema_AnyOfNonEnum_PreservesBranches(t *testing.T) {
 	schema := map[string]any{
 		"anyOf": []any{
 			map[string]any{"type": "string"},
 			map[string]any{"type": "number"},
 		},
 	}
-	SanitizeJSONSchema(schema)
-
-	if !strings.Contains(buf.String(), "anyOf") {
-		t.Fatalf("expected warning log about anyOf lossy conversion, got: %q", buf.String())
+	got := SanitizeJSONSchema(schema)
+	arr, ok := got["anyOf"].([]any)
+	if !ok {
+		t.Fatalf("expected anyOf preserved, got %v", got)
+	}
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 branches, got %d", len(arr))
 	}
 }
 
-func TestSanitizeJSONSchema_OneOfNonEnum_LogsWarning(t *testing.T) {
-	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	old := slog.Default()
-	slog.SetDefault(logger)
-	defer slog.SetDefault(old)
-
+func TestSanitizeJSONSchema_OneOfNonEnum_PreservesBranches(t *testing.T) {
 	schema := map[string]any{
 		"oneOf": []any{
 			map[string]any{"type": "string"},
 			map[string]any{"type": "number"},
 		},
 	}
-	SanitizeJSONSchema(schema)
-
-	if !strings.Contains(buf.String(), "oneOf") {
-		t.Fatalf("expected warning log about oneOf lossy conversion, got: %q", buf.String())
+	got := SanitizeJSONSchema(schema)
+	arr, ok := got["oneOf"].([]any)
+	if !ok {
+		t.Fatalf("expected oneOf preserved, got %v", got)
+	}
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 branches, got %d", len(arr))
 	}
 }
 
@@ -286,7 +273,7 @@ func TestSanitizeJSONSchema_AnyOfEnum_NoWarning(t *testing.T) {
 	}
 }
 
-func TestSanitizeJSONSchema_AnyOfNonEnum_UsesFirstBranch(t *testing.T) {
+func TestSanitizeJSONSchema_AnyOfNonEnum_PreservesAllBranches(t *testing.T) {
 	schema := map[string]any{
 		"anyOf": []any{
 			map[string]any{"type": "string", "description": "a string"},
@@ -294,11 +281,16 @@ func TestSanitizeJSONSchema_AnyOfNonEnum_UsesFirstBranch(t *testing.T) {
 		},
 	}
 	got := SanitizeJSONSchema(schema)
-	if _, ok := got["anyOf"]; ok {
-		t.Fatal("anyOf should be removed")
+	arr, ok := got["anyOf"].([]any)
+	if !ok {
+		t.Fatal("anyOf should be preserved as array")
 	}
-	if got["type"] != "string" {
-		t.Fatalf("expected type from first branch, got %v", got["type"])
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 branches, got %d", len(arr))
+	}
+	first := arr[0].(map[string]any)
+	if first["type"] != "string" {
+		t.Fatalf("first branch type = %v", first["type"])
 	}
 }
 
@@ -364,22 +356,28 @@ func TestSanitizeJSONSchema_AllOfMerged(t *testing.T) {
 }
 
 func TestSanitizeJSONSchema_RemovesValidationKeywords(t *testing.T) {
-	keywords := []string{
-		"format", "pattern",
+	// These are still removed:
+	removed := []string{
 		"minLength", "maxLength",
 		"minimum", "maximum",
 		"minItems", "maxItems",
 		"uniqueItems", "multipleOf",
 		"not",
 	}
-	for _, kw := range keywords {
+	for _, kw := range removed {
 		schema := map[string]any{"type": "string", kw: "value"}
 		got := SanitizeJSONSchema(schema)
 		if _, ok := got[kw]; ok {
 			t.Fatalf("%q should be removed", kw)
 		}
-		if got["type"] != "string" {
-			t.Fatalf("type should be preserved when removing %q", kw)
+	}
+	// These are now preserved:
+	preserved := []string{"format", "pattern"}
+	for _, kw := range preserved {
+		schema := map[string]any{"type": "string", kw: "value"}
+		got := SanitizeJSONSchema(schema)
+		if _, ok := got[kw]; !ok {
+			t.Fatalf("%q should be preserved", kw)
 		}
 	}
 }
@@ -400,9 +398,8 @@ func TestSanitizeJSONSchema_RemovesPatternProperties(t *testing.T) {
 	}
 }
 
-func TestSanitizeJSONSchema_AnyOfOverridesType_Deterministic(t *testing.T) {
-	// anyOf first-branch has type "string", but schema also has type "object".
-	// Combinator should always win regardless of map iteration order.
+func TestSanitizeJSONSchema_AnyOfPreservedWithType(t *testing.T) {
+	// anyOf preserved as-is alongside the outer "type" field.
 	schema := map[string]any{
 		"type": "object",
 		"anyOf": []any{
@@ -410,11 +407,12 @@ func TestSanitizeJSONSchema_AnyOfOverridesType_Deterministic(t *testing.T) {
 			map[string]any{"type": "number"},
 		},
 	}
-	// Run multiple times to catch map iteration order flakiness.
-	for i := range 100 {
-		got := SanitizeJSONSchema(schema)
-		if got["type"] != "string" {
-			t.Fatalf("iteration %d: type = %v, want string (combinator should override)", i, got["type"])
-		}
+	got := SanitizeJSONSchema(schema)
+	if got["type"] != "object" {
+		t.Fatalf("outer type should be preserved, got %v", got["type"])
+	}
+	arr, ok := got["anyOf"].([]any)
+	if !ok || len(arr) != 2 {
+		t.Fatalf("anyOf should be preserved with 2 branches, got %v", got["anyOf"])
 	}
 }

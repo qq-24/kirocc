@@ -372,20 +372,20 @@ func TestAccumulator_MaxTokens(t *testing.T) {
 	}
 }
 
-func TestAccumulator_MaxTokens_ThinkingCountsTowardBudget(t *testing.T) {
+func TestAccumulator_MaxTokens_ThinkingDoesNotConsumeBudget(t *testing.T) {
 	acc := responseAccumulator{maxTokensBudget: 2} // 2 tokens = 8 runes
-	// Thinking: "Think!!!" = 8 runes = 2 tokens, exactly at budget.
+	// Thinking: "Think!!!" = 8 runes — should NOT consume budget.
 	d := acc.ProcessEvent(kiroproto.Event{Type: "reasoningContentEvent", ThinkingText: "Think!!!"})
 	if d.ThinkingDelta != "Think!!!" {
 		t.Fatalf("ThinkingDelta = %q", d.ThinkingDelta)
 	}
-	if !acc.LocalStop {
-		t.Fatal("expected LocalStop after thinking exhausted budget")
+	if acc.LocalStop {
+		t.Fatal("thinking should not trigger LocalStop")
 	}
-	// Subsequent text should be suppressed.
+	// Subsequent text should still work (budget intact).
 	d = acc.ProcessEvent(kiroproto.Event{Type: "assistantResponseEvent", Content: "Hello"})
-	if d.TextDelta != "" {
-		t.Fatalf("expected empty TextDelta, got %q", d.TextDelta)
+	if d.TextDelta != "Hello" {
+		t.Fatalf("expected TextDelta = \"Hello\", got %q", d.TextDelta)
 	}
 }
 

@@ -106,17 +106,13 @@ func (a *responseAccumulator) IsEmptyVisibleEndTurn() bool {
 	return a.ThinkingBuf.Len() > 0 && a.TextBuf.Len() == 0 && !a.HasToolUse
 }
 
-// accumulateThinking applies max_tokens budget to thinking content and writes to ThinkingBuf.
-// Sets ThinkingDelta and StopSignal on the delta as appropriate.
+// accumulateThinking writes thinking content to ThinkingBuf without consuming
+// the max_tokens budget (thinking is not counted toward output token limits,
+// matching Anthropic native API behavior).
 func (a *responseAccumulator) accumulateThinking(thought string, d *EventDelta) {
-	thought = a.applyMaxTokensBudget(thought)
 	if thought != "" {
 		a.ThinkingBuf.WriteString(thought)
 		d.ThinkingDelta = thought
-	}
-	if a.LocalStop {
-		d.StopSignal = true
-		d.StopReason = a.StopReason
 	}
 }
 

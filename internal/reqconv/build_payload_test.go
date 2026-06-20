@@ -188,7 +188,7 @@ func TestBuildPayload_ToolUseFlow(t *testing.T) {
 	if ctx.ToolResults[0].ToolUseID != "toolu_01" {
 		t.Fatalf("toolUseId = %q", ctx.ToolResults[0].ToolUseID)
 	}
-	if len(ctx.Tools) != 1 {
+	if len(ctx.Tools) != 2 {
 		t.Fatalf("tools len = %d", len(ctx.Tools))
 	}
 	wantContent := "Analyze the tool results above. Continue executing the task — decide and act on the next step immediately."
@@ -626,8 +626,8 @@ func TestBuildPayload_Doc09_FullExample(t *testing.T) {
 		t.Fatal("expected tool specification")
 	}
 	schema := toolSpec.InputSchema.JSON
-	if _, ok := schema["additionalProperties"]; ok {
-		t.Fatal("additionalProperties should be removed")
+	if _, ok := schema["additionalProperties"]; !ok {
+		t.Fatal("additionalProperties should be preserved")
 	}
 	// profileArn
 	if payload.ProfileARN != "arn:aws:codewhisperer:us-east-1:123456789:profile/example" {
