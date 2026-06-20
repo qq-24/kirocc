@@ -106,8 +106,8 @@ func (s SafeHeaders) LogValue() slog.Value {
 }
 
 const (
-	DefaultLogMaxSize    = 10 // MB - small enough for coding agents to read
-	DefaultLogMaxBackups = 5
+	DefaultLogMaxSize    = 500 // MB
+	DefaultLogMaxBackups = 3
 	DefaultLogMaxAge     = 7 // days
 )
 

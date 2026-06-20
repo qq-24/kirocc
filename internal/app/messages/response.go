@@ -193,21 +193,9 @@ func (s *Service) handleNonStreamingResponse(ctx context.Context, w http.Respons
 
 	resp, stats := acc.BuildResponse(model)
 
-	// Detect empty visible end_turn (thinking-only response with no visible text).
-	if acc.IsEmptyVisibleEndTurn() {
-		args := []any{
-			"trace_id", short,
-			"thinking_chars", acc.ThinkingLen(),
-			"has_tool_use", false,
-			"retry", true,
-		}
-		args = append(args, capture.logAttrs()...)
-		slog.WarnContext(ctx, "empty visible end_turn detected", args...)
-		if credits, ok := acc.Credits(); ok {
-			logAbortedAttemptCredits(ctx, short, credits, retryReasonEmptyVisibleEndTurn)
-		}
-		return retryReasonEmptyVisibleEndTurn
-	}
+	// Empty visible end_turn retry is disabled: with full thinking history
+	// preserved, models may produce thinking-only responses that are valid.
+	// The old retry logic discarded these, causing infinite retry loops.
 
 	w.Header().Set("Content-Type", "application/json")
 	slog.DebugContext(ctx, "client response headers",
