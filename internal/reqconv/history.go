@@ -50,15 +50,6 @@ func extractToolUseIDs(msg anthropic.Message) []string {
 
 // buildHistory converts normalized Anthropic messages to Kiro history entries.
 func buildHistory(msgs []anthropic.Message, nameMap *ToolNameMap) []kiroproto.HistoryEntry {
-	// Find the last "real" user message (has text content, not just tool_results).
-	// Only thinking AFTER this boundary should be preserved (current react loop).
-	lastRealUserIdx := -1
-	for i, msg := range msgs {
-		if msg.Role == "user" && hasRealTextContent(msg.Content) {
-			lastRealUserIdx = i
-		}
-	}
-
 	var history []kiroproto.HistoryEntry
 
 	for i, msg := range msgs {
@@ -89,15 +80,14 @@ func buildHistory(msgs []anthropic.Message, nameMap *ToolNameMap) []kiroproto.Hi
 		case "assistant":
 			content := ExtractTextContent(msg.Content)
 			allToolUses := ExtractToolUses(msg.Content)
-			// Preserve thinking for assistant messages AFTER the last real
-			// user message (current react loop). Strip all older thinking.
-			if i > lastRealUserIdx {
-				if thinking := extractThinkingText(msg.Content); thinking != "" {
-					if content == "" {
-						content = "<thinking>\n" + thinking + "\n</thinking>"
-					} else {
-						content = "<thinking>\n" + thinking + "\n</thinking>\n\n" + content
-					}
+			// Preserve thinking for ALL assistant messages (full history).
+			// Claude Code retains thinking blocks in messages; we inline them
+			// as <thinking> XML tags since Kiro's format only has a content string.
+			if thinking := extractThinkingText(msg.Content); thinking != "" {
+				if content == "" {
+					content = "<thinking>\n" + thinking + "\n</thinking>"
+				} else {
+					content = "<thinking>\n" + thinking + "\n</thinking>\n\n" + content
 				}
 			}
 			for i := range allToolUses {
