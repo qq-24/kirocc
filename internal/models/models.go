@@ -156,17 +156,12 @@ func Resolve(model string, context1M bool) (kiroModel string, thinking bool, con
 	}
 
 	if !matched {
-		if strings.HasPrefix(model, "claude-") {
-			kiroModel = model
-			anthropicModel = model
-		} else {
-			slog.Warn("models.Resolve: non-claude model, falling back to default",
-				"requested_model", model,
-				"kiro_model", DefaultModel,
-			)
-			kiroModel = DefaultModel
-			anthropicModel = DefaultAnthropicModel
-		}
+		slog.Warn("models.Resolve: unmatched model, falling back to default",
+			"requested_model", model,
+			"kiro_model", DefaultModel,
+		)
+		kiroModel = DefaultModel
+		anthropicModel = DefaultAnthropicModel
 	} else {
 		anthropicModel = matchedAnthropic
 	}
