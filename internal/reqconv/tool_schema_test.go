@@ -65,20 +65,15 @@ func TestConvertTools_LongNameShortened(t *testing.T) {
 	}
 }
 
-func TestSanitizeJSONSchema_PreservesAdditionalProperties(t *testing.T) {
+func TestSanitizeJSONSchema_RemovesAdditionalProperties(t *testing.T) {
 	schema := map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
 		"properties":           map[string]any{"x": map[string]any{"type": "string", "additionalProperties": true}},
 	}
 	got := SanitizeJSONSchema(schema)
-	if _, ok := got["additionalProperties"]; !ok {
-		t.Fatal("additionalProperties should be preserved")
-	}
-	props := got["properties"].(map[string]any)
-	x := props["x"].(map[string]any)
-	if _, ok := x["additionalProperties"]; !ok {
-		t.Fatal("nested additionalProperties should be preserved")
+	if _, ok := got["additionalProperties"]; ok {
+		t.Fatal("additionalProperties should be removed")
 	}
 }
 

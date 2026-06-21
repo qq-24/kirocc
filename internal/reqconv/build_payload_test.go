@@ -626,8 +626,8 @@ func TestBuildPayload_Doc09_FullExample(t *testing.T) {
 		t.Fatal("expected tool specification")
 	}
 	schema := toolSpec.InputSchema.JSON
-	if _, ok := schema["additionalProperties"]; !ok {
-		t.Fatal("additionalProperties should be preserved")
+	if _, ok := schema["additionalProperties"]; ok {
+		t.Fatal("additionalProperties should be removed")
 	}
 	// profileArn
 	if payload.ProfileARN != "arn:aws:codewhisperer:us-east-1:123456789:profile/example" {
