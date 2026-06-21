@@ -6,6 +6,7 @@ import (
 
 // unsupportedKeywords lists JSON Schema keywords that Kiro API rejects.
 var unsupportedKeywords = map[string]struct{}{
+	"additionalProperties":  {},
 	"$schema":               {},
 	"propertyNames":         {},
 	"default":               {},
